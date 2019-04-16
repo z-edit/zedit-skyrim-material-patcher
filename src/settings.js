@@ -1,16 +1,16 @@
-let isPlayable = {
-    SSE: {
-        WEAP: rec => !xelib.GetFlag(rec, 'DNAM\\Flags', 'Non-playable'),
-        ARMO: rec => !xelib.GetRecordFlag(rec, 'Non-Playable')
-    },
-    TES5: {
-        WEAP: rec => !xelib.GetFlag(rec, 'DNAM\\Flags', 'Non-playable'),
-        ARMO: rec => !xelib.GetFlag(rec, 'ACBS\\General Flags', '(ARMO)Non-Playable')
-    }
-};
-
 let settingsController = function($scope, gameService, patcherService, recordPatchingService, skyrimMaterialService) {
     const signatures = ['ARMO', 'WEAP'];
+
+    let getIsPlayable = {
+        SSE: {
+            WEAP: rec => !xelib.GetFlag(rec, 'DNAM\\Flags', 'Non-playable'),
+            ARMO: rec => !xelib.GetRecordFlag(rec, 'Non-Playable')
+        },
+        TES5: {
+            WEAP: rec => !xelib.GetFlag(rec, 'DNAM\\Flags', 'Non-playable'),
+            ARMO: rec => !xelib.GetFlag(rec, 'ACBS\\General Flags', '(ARMO)Non-Playable')
+        }
+    };
 
     let {loadRecords} = recordPatchingService,
         {getMaterial} = skyrimMaterialService,
@@ -24,7 +24,7 @@ let settingsController = function($scope, gameService, patcherService, recordPat
     let loadRecordData = function(data, rec, sig) {
         if (!patcherSettings[sig]) return;
         let oldData = patcherSettings[sig].findByKey('edid', data.edid);
-        data.material = (oldData && oldData.material) || getMaterial(rec);
+        data.material = (oldData && oldData.material) || 'None';
         return data;
     };
 
@@ -34,9 +34,12 @@ let settingsController = function($scope, gameService, patcherService, recordPat
         edid: xelib.EditorID(rec)
     }, rec, sig);
 
+    let hasMaterial = rec => Boolean(getMaterial(rec));
+
     let loadData = function(sig) {
-        let records = loadRecords(patchFile, patcher.filesToPatch, sig);
-        return records.filter(isPlayable[gameService.appName][sig])
+        let isPlayable = getIsPlayable[gameService.appName][sig],
+            records = loadRecords(patchFile, patcher.filesToPatch, sig);
+        return records.filter(rec => isPlayable(rec) && !hasMaterial(rec))
             .map(rec => buildRecordData(rec, sig));
     };
 
