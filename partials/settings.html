@@ -1,25 +1,25 @@
 <h2>Skyrim Material Patcher</h2>
 
 <h3>Equipment Sets
-    <div ng-if="settings.skyrimMaterialPatcher.files" class="positive-fg" ng-click="load()" title="Reload data">
+    <div ng-if="settings.skyrimMaterialPatcher.equipment" class="positive-fg" ng-click="load()" title="Reload data">
         <span class="fa fa-refresh"></span>
     </div>
 </h3>
-<div class="center" ng-if="!settings.skyrimMaterialPatcher.files">
+<div class="center" ng-if="!settings.skyrimMaterialPatcher.equipment">
     <button class="action-btn big" ng-click="load()">Load Data</button>
 </div>
-<section ng-if="settings.skyrimMaterialPatcher.files">
-    <expandable-section ng-repeat="file in settings.skyrimMaterialPatcher.files">
-        <title>{{::file.filename}} ({{::file.sets.length}} equipment sets)</title>
+<section ng-if="settings.skyrimMaterialPatcher.equipment">
+    <expandable-section ng-repeat="entry in settings.skyrimMaterialPatcher.equipment">
+        <title>{{::entry.filename}} ({{::entry.sets.length}} equipment sets)</title>
         <content>
-            <div ng-repeat="set in file.sets">
+            <div ng-repeat="set in entry.sets">
                 <div class="flex">
                     <div class="name">{{::set.name}}</div>
                     <label>
                         <span>Material:</span>
                         <select ng-model="set.material">
-                            <option ng-repeat="material in materials" value="{{::material.editorId}}">
-                                {{::material.name}}
+                            <option ng-repeat="(key,value) in settings.skyrimMaterialPatcher.materials">
+                                {{::key}}
                             </option>
                         </select>
                     </label>

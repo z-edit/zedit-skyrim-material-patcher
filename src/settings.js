@@ -1,4 +1,10 @@
-let settingsController = function($scope, gameService, patcherService, recordPatchingService, skyrimMaterialService) {
+let settingsController = function($scope, gameService, patcherService,
+        progressService, recordPatchingService, skyrimMaterialService) {
+    const keywordTypeMap = {
+        weaponKeyword: 'Weap(?:on)?Materi[ae]l',
+        armorKeyword: 'Armor?Materi[ae]l'
+    };
+
     let getIsPlayable = {
         SSE: {
             WEAP: rec => !xelib.GetFlag(rec, 'DNAM\\Flags', 'Non-playable'),
@@ -15,25 +21,18 @@ let settingsController = function($scope, gameService, patcherService, recordPat
         patcher = patcherService.getPatcher('skyrimMaterialPatcher'),
         patchFile = xelib.FileByName(patcherSettings.patchFileName);
 
-    let recordFilter = {
-        WEAP: function(rec) {
+    let equipmentFilter = function(sig) {
+        return rec => {
             return !xelib.GetRecordFlag(rec, 'Deleted') &&
                 xelib.HasElement(rec, 'FULL') &&
-                getIsPlayable.WEAP(rec) &&
+                getIsPlayable[sig](rec) &&
                 !getMaterial(rec) &&
                 !xelib.HasElement(rec, 'EITM');
-        },
-        ARMO: function(rec) {
-            return !xelib.GetRecordFlag(rec, 'Deleted') &&
-                xelib.HasElement(rec, 'FULL') &&
-                getIsPlayable.ARMO(rec) &&
-                !getMaterial(rec) &&
-                !xelib.HasElement(rec, 'EITM');
-        }
+        };
     };
 
     // helper functions
-    let buildRecordData = (rec) => ({
+    let buildRecordData = rec => ({
         name: xelib.FullName(rec),
         edid: xelib.EditorID(rec)
     });
@@ -47,13 +46,12 @@ let settingsController = function($scope, gameService, patcherService, recordPat
     let loadRecords = function(file, sig) {
         return xelib.GetRecords(file, sig)
             .map(getOverride())
-            .filter(recordFilter[sig])
+            .filter(equipmentFilter(sig))
             .map(buildRecordData);
     };
 
-    let getSetName = function(record) {
-        let fullName = xelib.FullName(record),
-            match = fullName.match(/.* (\w+)/i);
+    let getSetName = function(fullName) {
+        let match = fullName.match(/.* (\w+)/i);
         return match && match[1];
     };
 
@@ -62,48 +60,58 @@ let settingsController = function($scope, gameService, patcherService, recordPat
     };
 
     let addSet = function(sets, name) {
-        let newSet = { name, items: [] };
+        let newSet = { name, amors: [], weapons: [] };
         sets.push(newSet);
         return newSet;
     };
 
-    let loadSets = function(filename) {
-        let file = xelib.FileByName(filename),
-            armors = loadRecords(file, 'ARMO'),
-            weapons = loadRecords(file, 'WEAP'),
-            records = armors.concat(weapons);
-        return records.reduce((sets, record) => {
-            let setName = getSetName(record),
+    let buildSets = function(sets, file, sig, key) {
+        let records = loadRecords(file, sig);
+        records.forEach(record => {
+            let setName = getSetName(record.name),
                 set = getSet(sets, setName) || addSet(sets, setName);
-            set.items.push(record);
-            return sets;
+            set[key].push(record);
         });
     };
 
+    let loadSets = function(filename) {
+        let file = xelib.FileByName(filename),
+            sets = [];
+        buildSets(sets, file, 'ARMO', 'armors');
+        buildSets(sets, file, 'WEAP', 'weapons');
+        return sets;
+    };
+
     let loadOldData = function(entry) {
-        let oldEntry = patcherSettings.files.find(file => {
-            return file.filename === entry.filename;
-        });
+        let oldEquipment = patcherSettings.equipment,
+            oldEntry = oldEquipment.findByKey('filename', entry.filename);
         if (!oldEntry) return;
         entry.sets.forEach(set => {
-            let oldSet = oldEntry.sets.find(oldSet => {
-                return oldSet.name === set.name;
-            });
+            let oldSet = oldEntry.sets.findByKey('name', set.name);
             set.material = (oldSet && oldSet.material) || 'None';
         });
     };
 
-    let buildFileObject = filename => ({
-        filename,
-        sets: loadSets(filename)
-    });
-
-    let loadFiles = function() {
-        let files = patcher.filesToPatch
-            .map(buildFileObject)
+    let loadEquipment = function() {
+        let equipment = patcher.filesToPatch
+            .map(filename => ({ filename, sets: loadSets(filename) }))
             .filter(entry => entry.sets.length);
-        files.forEach(loadOldData);
-        return files;
+        equipment.forEach(loadOldData);
+        return equipment;
+    };
+
+    let newMaterial = function(materials, obj) {
+        return materials[obj.name] = {
+            filename: obj.filename,
+            editorId: obj.editorId
+        };
+    };
+
+    let storeFormId = function(material, obj) {
+        let keywordType = Object.keys(keywordTypeMap).find(key => {
+            return keywordTypeMap[key].test(obj.editorId);
+        }) || 'genericKeyword';
+        material[keywordType] = xelib.GetHexFormID(obj.rec, true);
     };
 
     let loadMaterialKeywords = function(filename) {
@@ -111,29 +119,37 @@ let settingsController = function($scope, gameService, patcherService, recordPat
         return xelib.GetRecords(file, 'KYWD')
             .map(getOverride())
             .filter(rec => !xelib.GetRecordFlag(rec, 'Deleted'))
-            .map(rec => ({ editorId: xelib.EditorId(rec), rec }))
+            .map(rec => ({ editorId: xelib.EditorID(rec), rec, filename }))
             .filter(obj => {
                 let match = obj.editorId.match(/Materi[ae]l(.*)/);
-                if (!match) return;
-                obj.name = match[1];
-                obj.filename = filename;
-                obj.fid = xelib.GetFormId(obj.rec, true);
-                delete obj.rec;
-                return true;
+                obj.name = match && match[1];
+                return Boolean(match);
             });
     };
 
     let loadMaterials = function() {
         return patcher.filesToPatch.reduce((materials, filename) => {
             return materials.concat(loadMaterialKeywords(filename));
-        }, []);
+        }, []).reduce((materials, obj) => {
+            let material = materials[obj.name] || newMaterial(materials, obj);
+            storeFormId(material, obj);
+            return materials;
+        }, {});
     };
 
     // scope functions
     $scope.load = function() {
-        xelib.WithHandleGroup(() => {
-            patcherSettings.materials = loadMaterials();
-            patcherSettings.files = loadFiles();
-        });
+        progressService.showProgress({ message: 'Loading materials...' });
+        try {
+            xelib.WithHandleGroup(() => {
+                patcherSettings.materials = loadMaterials();
+                progressService.progressMessage('Loading equipment...');
+                patcherSettings.equipment = loadEquipment();
+            });
+            progressService.hideProgress();
+        } catch(x) {
+            progressService.hideProgress();
+            logger.error(x);
+        }
     };
 };
