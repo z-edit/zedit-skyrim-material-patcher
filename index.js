@@ -5,11 +5,6 @@
 let sortedGroups = {};
 let keywords;
 
-let loadKeywords = function(key) {
-    let filePath = fh.path(patcherPath, 'resources', `${key}Keywords.json`);
-    keywords = fh.loadResourceFile(filePath);
-};
-
 let injectKeywords = function(patchFile, helpers) {
     helpers.logMessage('Injecting keywords');
     let group = xelib.AddElement(patchFile, 'KYWD');
@@ -21,23 +16,13 @@ let injectKeywords = function(patchFile, helpers) {
     });
 };
 
-let getSortedGroup = function(filename, sig) {
-    let key = `${filename}/${sig}`;
-    if (!sortedGroups.hasOwnProperty(key)) {
-        let file = xelib.FileByName(filename);
-        xelib.SortEditorIDs(file, sig);
-        sortedGroups[key] = xelib.GetElement(file, sig);
-    }
-    return sortedGroups[key];
-};
-
 let getKeywordToUse = function(sig, material) {
     return keywords.find(keyword => {
         return keyword.sig === sig && keyword.material === material;
     })
 };
 
-let patchKeywords = function(patchFile, helpers, settings, sig, label) {
+let patchKeywords = function(patchFile, helpers, settings) {
     let {setMaterialKeyword} = helpers.skyrimMaterialService,
         items = settings[sig];
     helpers.logMessage(`Patching ${items.length} ${label} records`);
@@ -55,7 +40,7 @@ registerPatcher({
     info: info,
     gameModes: [xelib.gmSSE, xelib.gmTES5],
     settings: {
-        label: 'Skyrim Keyword Fixes',
+        label: 'Skyrim Material Patcher',
         templateUrl: `${patcherUrl}/partials/settings.html`,
         controller: settingsController,
         defaultSettings: {}
@@ -63,10 +48,8 @@ registerPatcher({
     execute: (patchFile, helpers, settings) => ({
         initialize: function() {
             sortedGroups = {};
-            loadKeywords(settings.keywordSet);
-            injectKeywords(patchFile, helpers);
-            patchKeywords(patchFile, helpers, settings, 'ARMO', 'armor');
-            patchKeywords(patchFile, helpers, settings, 'WEAP', 'weapon');
+            injectKeywords(patchFile, helpers, settings);
+            patchKeywords(patchFile, helpers, settings);
         }
     })
 });

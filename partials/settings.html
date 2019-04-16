@@ -1,7 +1,15 @@
-<h2>Skyrim Keyword Fixes</h2>
+<h2>Skyrim Material Patcher</h2>
 
-<section>
-    <expandable-section ng-repeat="file in files">
+<h3>Equipment Sets
+    <div ng-if="settings.skyrimMaterialPatcher.files" class="positive-fg" ng-click="load()" title="Reload data">
+        <span class="fa fa-refresh"></span>
+    </div>
+</h3>
+<div class="center" ng-if="!settings.skyrimMaterialPatcher.files">
+    <button class="action-btn big" ng-click="load()">Load Data</button>
+</div>
+<section ng-if="settings.skyrimMaterialPatcher.files">
+    <expandable-section ng-repeat="file in settings.skyrimMaterialPatcher.files">
         <title>{{::file.filename}} ({{::file.sets.length}} equipment sets)</title>
         <content>
             <div ng-repeat="set in file.sets">
@@ -10,12 +18,14 @@
                     <label>
                         <span>Material:</span>
                         <select ng-model="set.material">
-                            <option ng-repeat="material in materials">{{::material.name}}</option>
+                            <option ng-repeat="material in materials" value="{{::material.editorId}}">
+                                {{::material.name}}
+                            </option>
                         </select>
                     </label>
                     <label>
-                        <input type="checkbox" ng-model="set.useDummyMaterial">
-                        <span>Use Dummy Material</span>
+                        <input type="checkbox" ng-model="set.useDummyKeyword">
+                        <span>Use Dummy Keyword</span>
                     </label>
                 </div>
                 <expandable-section>
@@ -32,3 +42,4 @@
         </content>
     </expandable-section>
 </section>
+

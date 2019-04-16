@@ -1,2 +1,2 @@
-# zedit-skyrim-keyword-fixes
-A patcher to make keywords more consistent on Skyrim armors and weapons.
+# zedit-skyrim-material-patcher
+A patcher to apply consistent material keywords to Skyrim armors and weapons.
