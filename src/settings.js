@@ -60,8 +60,8 @@ let settingsController = function($scope, gameService, patcherService, progressS
     };
 
     let getSetName = function(fullName) {
-        let match = fullName.match(/(.*) \w+/i);
-        return match && match[1];
+        let match = fullName.match(/(?:(.*) War Axe|(.*) \w+)/i);
+        return match && (match[1] || match[2]);
     };
 
     let getSet = function(sets, name) {
@@ -77,9 +77,8 @@ let settingsController = function($scope, gameService, patcherService, progressS
     let buildSets = function(sets, file, sig, key) {
         let records = loadRecords(file, sig);
         records.forEach(record => {
-            let setName = getSetName(record.name);
-            if (!setName) return;
-            let set = getSet(sets, setName) || addSet(sets, setName);
+            let setName = getSetName(record.name) || '~unique',
+                set = getSet(sets, setName) || addSet(sets, setName);
             set[key].push(record);
         });
     };
@@ -92,20 +91,43 @@ let settingsController = function($scope, gameService, patcherService, progressS
         return sets;
     };
 
+    let handleUniqueItems = function(entry) {
+        let uniqueSet = entry.sets.findByKey('name', '~unique') || {};
+        entry.items = Array.prototype.concat(
+            uniqueSet.armors || [], uniqueSet.weapons || []
+        );
+        entry.items.forEach(item => item.material = 'None');
+        entry.sets = entry.sets.filter(set => {
+            if (set.name === '~unique') return;
+            if (set.armors.length + set.weapons.length > 1) return true;
+            ['armors', 'weapons'].forEach(key => {
+                if (!set[key].length) return;
+                entry.items.push(Object.assign({
+                    material: set.material || 'None'
+                }, set[key][0]));
+            });
+        });
+    };
+
+    let applyOldData = function(a, item) {
+        if (!a) return;
+        let oldItem = a.findByKey('name', item.name);
+        if (oldItem) item.material = oldItem.material || 'None';
+    };
+
     let loadOldData = function(entry) {
         let oldEquipment = patcherSettings.equipment || [],
             oldEntry = oldEquipment.findByKey('filename', entry.filename);
         if (!oldEntry) return;
-        entry.sets.forEach(set => {
-            let oldSet = oldEntry.sets.findByKey('name', set.name);
-            if (oldSet) set.material = oldSet.material || 'None';
-        });
+        entry.sets.forEach(set => applyOldData(oldEntry.sets, set));
+        entry.items.forEach(item => applyOldData(oldEntry.items, item));
     };
 
     let loadEquipment = function() {
         let equipment = patcher.filesToPatch
             .map(filename => ({ filename, sets: loadSets(filename) }))
             .filter(entry => entry.sets.length);
+        equipment.forEach(handleUniqueItems);
         equipment.forEach(loadOldData);
         return equipment;
     };
