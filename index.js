@@ -1,6 +1,8 @@
 /* global fh, xelib, logger, registerPatcher, patcherPath, patcherUrl */
 
+//
 //= require src/settings.js
+//
 
 let dummyKeywords;
 
@@ -25,6 +27,7 @@ let addMaterialKeyword = function(patchRec, settings, set, type) {
 };
 
 let patchItemSet = function(set, file, helpers, settings) {
+    if (set.material === 'None') return;
     let patchKeyword = function(item, type) {
         let rec = xelib.GetRecord(file, item.fid),
             patchRec = helpers.copyToPatch(rec);
