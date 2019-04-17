@@ -1,8 +1,11 @@
-let settingsController = function($scope, gameService, patcherService,
-        progressService, recordPatchingService, skyrimMaterialService) {
+let settingsController = function($scope, gameService, patcherService, progressService, skyrimMaterialService) {
     const keywordTypeMap = {
-        weaponKeyword: 'Weap(?:on)?Materi[ae]l',
-        armorKeyword: 'Armor?Materi[ae]l'
+        weaponKeyword: /Weap(?:on)?Materi[ae]l/,
+        armorKeyword: /Armor?Materi[ae]l/
+    };
+
+    let hasBodyFlag = function(rec, flag) {
+        return xelib.GetFlag(rec, '[BODT|BOD2]\\General Flags', flag);
     };
 
     let getIsPlayable = {
@@ -12,7 +15,7 @@ let settingsController = function($scope, gameService, patcherService,
         },
         TES5: {
             WEAP: rec => !xelib.GetFlag(rec, 'DNAM\\Flags', 'Non-playable'),
-            ARMO: rec => !xelib.GetFlag(rec, 'ACBS\\General Flags', '(ARMO)Non-Playable')
+            ARMO: rec => !hasBodyFlag(rec, '(ARMO)Non-Playable')
         }
     }[gameService.appName];
 
@@ -22,10 +25,16 @@ let settingsController = function($scope, gameService, patcherService,
         patchFile = xelib.FileByName(patcherSettings.patchFileName);
 
     let equipmentFilter = function(sig) {
+        let isAllowedType = {
+            ARMO: rec => xelib.GetArmorType(rec) !== 'Clothing',
+            WEAP: rec => !xelib.HasKeyword(rec, 'WeapTypeStaff') &&
+                xelib.HasElement(rec, 'Model')
+        }[sig];
         return rec => {
             return !xelib.GetRecordFlag(rec, 'Deleted') &&
                 xelib.HasElement(rec, 'FULL') &&
                 getIsPlayable[sig](rec) &&
+                isAllowedType(rec) &&
                 !getMaterial(rec) &&
                 !xelib.HasElement(rec, 'EITM');
         };
@@ -51,7 +60,7 @@ let settingsController = function($scope, gameService, patcherService,
     };
 
     let getSetName = function(fullName) {
-        let match = fullName.match(/.* (\w+)/i);
+        let match = fullName.match(/(.*) \w+/i);
         return match && match[1];
     };
 
@@ -60,7 +69,7 @@ let settingsController = function($scope, gameService, patcherService,
     };
 
     let addSet = function(sets, name) {
-        let newSet = { name, amors: [], weapons: [] };
+        let newSet = { name, armors: [], weapons: [], material: 'None' };
         sets.push(newSet);
         return newSet;
     };
@@ -68,8 +77,9 @@ let settingsController = function($scope, gameService, patcherService,
     let buildSets = function(sets, file, sig, key) {
         let records = loadRecords(file, sig);
         records.forEach(record => {
-            let setName = getSetName(record.name),
-                set = getSet(sets, setName) || addSet(sets, setName);
+            let setName = getSetName(record.name);
+            if (!setName) return;
+            let set = getSet(sets, setName) || addSet(sets, setName);
             set[key].push(record);
         });
     };
@@ -83,12 +93,12 @@ let settingsController = function($scope, gameService, patcherService,
     };
 
     let loadOldData = function(entry) {
-        let oldEquipment = patcherSettings.equipment,
+        let oldEquipment = patcherSettings.equipment || [],
             oldEntry = oldEquipment.findByKey('filename', entry.filename);
         if (!oldEntry) return;
         entry.sets.forEach(set => {
             let oldSet = oldEntry.sets.findByKey('name', set.name);
-            set.material = (oldSet && oldSet.material) || 'None';
+            if (oldSet) set.material = oldSet.material || 'None';
         });
     };
 
@@ -149,7 +159,7 @@ let settingsController = function($scope, gameService, patcherService,
             progressService.hideProgress();
         } catch(x) {
             progressService.hideProgress();
-            logger.error(x);
+            console.error(x);
         }
     };
 };
