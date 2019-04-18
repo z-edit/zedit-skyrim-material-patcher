@@ -1,12 +1,12 @@
 {
-  "id": "matorsExamplePatcher",
-  "name": "Example Patcher",
+  "id": "skyrimMaterialPatcher",
+  "name": "Skyrim Material Patcher",
   "author": "Mator",
-  "version": "1.3.0",
-  "released": "9/5/2017",
-  "updated": "5/24/2018",
-  "description": "An example of a patcher which uses zEdit's Unified Patching System.",
-  "requires": ["unifiedPatchingFramework"],
-  "moduleLoader": "UPF",
-  "canHotLoad": true
+  "version": "1.0.0",
+  "released": "0/0/2019",
+  "updated": "0/0/2019",
+  "description": "A patcher to apply consistent material keywords to Skyrim armors and weapons.",
+  "requires": ["unifiedPatchingFramework", "skyrimKeywordHelpers"],
+  "moduleLoader": "default",
+  "canHotLoad": false
 }

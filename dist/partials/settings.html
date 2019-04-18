@@ -1,14 +1,116 @@
-<h2>Example Patcher</h2>
+<style>
+    expandable-section div.title {
+        margin-top: 4px;
+        font-size: large;
+    }
 
-<section>
-    <ignore-plugins patcher-id="matorsExamplePatcher"></ignore-plugins>
+    expandable-section content > div {
+        padding: 10px;
+        margin: 16px 0;
+    }
+
+    expandable-section section.content {
+        display: block;
+        margin: 0 15px;
+    }
+
+    expandable-section ul {
+        margin: 6px 0;
+        padding-left: 24px;
+    }
+
+    expandable-section.small div.title {
+        font-size: initial;
+    }
+
+    expandable-section div.name {
+        font-weight: 600;
+        font-size: large;
+        margin-bottom: 6px;
+    }
+</style>
+
+<h2>Skyrim Material Patcher</h2>
+
+<h3>Equipment
+    <button ng-if="settings.skyrimMaterialPatcher.equipment" class="glyph-button positive-fg" ng-click="load()" title="Reload data">
+        <span class="fa fa-refresh"></span>
+    </button>
+</h3>
+<div class="center" ng-if="!settings.skyrimMaterialPatcher.equipment">
+    <button class="action-btn big" ng-click="load()">Load Data</button>
+</div>
+<section ng-if="settings.skyrimMaterialPatcher.equipment">
+    <expandable-section ng-repeat="entry in settings.skyrimMaterialPatcher.equipment">
+        <title>{{::entry.filename}}</title>
+        <content>
+            <expandable-section ng-if="entry.sets.length">
+                <title>Item Sets ({{::entry.sets.length}})</title>
+                <content>
+                    <div ng-repeat="set in entry.sets" class="tint-bg hard-border">
+                        <div class="flex">
+                            <div class="name">{{::set.name}}</div>
+                            <label>
+                                <span>Material:</span>
+                                <select ng-model="set.material">
+                                    <option value="None">None</option>
+                                    <option ng-repeat="(key,value) in settings.skyrimMaterialPatcher.materials" value="{{::key}}">
+                                        {{::key}}
+                                    </option>
+                                </select>
+                            </label>
+                            <label>
+                                <input type="checkbox" ng-model="set.useDummyKeyword">
+                                <span>Use Dummy Keyword</span>
+                            </label>
+                        </div>
+                        <expandable-section ng-if="set.weapons.length" class="small">
+                            <title>{{::set.weapons.length}} Weapons</title>
+                            <content>
+                                <ul>
+                                    <li ng-repeat="weapon in set.weapons">
+                                        {{::weapon.name}}
+                                    </li>
+                                </ul>
+                            </content>
+                        </expandable-section>
+                        <expandable-section ng-if="set.armors.length" class="small">
+                            <title>{{::set.armors.length}} Armors</title>
+                            <content>
+                                <ul>
+                                    <li ng-repeat="armor in set.armors">
+                                        {{::armor.name}}
+                                    </li>
+                                </ul>
+                            </content>
+                        </expandable-section>
+                    </div>
+                </content>
+            </expandable-section>
+            <expandable-section ng-if="entry.items.length">
+                <title>Unique Items ({{::entry.items.length}})</title>
+                <content>
+                    <div ng-repeat="item in entry.items" class="tint-bg hard-border">
+                        <div class="flex">
+                            <div class="name">{{::item.name}}</div>
+                            <label>
+                                <span>Material:</span>
+                                <select ng-model="item.material">
+                                    <option value="None">None</option>
+                                    <option ng-repeat="(key,value) in settings.skyrimMaterialPatcher.materials" value="{{::key}}">
+                                        {{::key}}
+                                    </option>
+                                </select>
+                            </label>
+                            <label>
+                                <input type="checkbox" ng-model="set.useDummyKeyword">
+                                <span>Use Dummy Keyword</span>
+                            </label>
+                        </div>
+                    </div>
+                </content>
+            </expandable-section>
+        </content>
+    </expandable-section>
 </section>
 
-<section>
-    <div>
-        <span class="input-label" title="The value specified here will be displayed &#13;in an alert when the patcher initialized.">Example Setting</span>
-        <input type="text" ng-model="settings.matorsExamplePatcher.exampleSetting"/>
-    </div>
-
-    <button class="action-btn" ng-click="showMessage()">Show message</button>
-</section>
