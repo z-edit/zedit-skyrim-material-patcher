@@ -6,10 +6,11 @@ ngapp.service('skyrimMaterialLoadService', function(prePatchService) {
 
     // private
     let newMaterial = function(materials, obj) {
-        return materials[obj.name] = {
+        materials[obj.name] = {
             filename: obj.filename,
             editorId: obj.editorId
         };
+        return materials[obj.name];
     };
 
     let storeFormId = function(material, obj) {

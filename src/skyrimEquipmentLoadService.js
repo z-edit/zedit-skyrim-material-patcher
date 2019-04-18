@@ -1,7 +1,7 @@
 ngapp.service('skyrimEquipmentLoadService', function(gameService, skyrimMaterialService, prePatchService) {
     const itemTypeMap = {
         ARMO: 'armor',
-        WEAP: 'wapon'
+        WEAP: 'weapon'
     };
 
     let {getMaterial} = skyrimMaterialService;
@@ -43,6 +43,7 @@ ngapp.service('skyrimEquipmentLoadService', function(gameService, skyrimMaterial
             .map(rec => ({
                 name: xelib.FullName(rec),
                 edid: xelib.EditorID(rec),
+                formId: xelib.GetFormID(rec, true),
                 type: itemTypeMap[sig]
             }));
     };
@@ -84,8 +85,8 @@ ngapp.service('skyrimEquipmentLoadService', function(gameService, skyrimMaterial
 
     let handleUniqueItems = function(entry) {
         let uniqueSet = entry.sets.findByKey('name', '~unique');
-        uniqueSet.weapons.forEach(armor => pushItem(entry, armor, 'armor'));
-        uniqueSet.armors.forEach(armor => pushItem(entry, armor, 'armor'));
+        pushItems(entry, uniqueSet, 'armors');
+        pushItems(entry, uniqueSet, 'weapons');
         entry.sets = entry.sets.filter(set => {
             if (set.name === '~unique') return;
             if (set.armors.length + set.weapons.length > 1) return true;
@@ -96,12 +97,13 @@ ngapp.service('skyrimEquipmentLoadService', function(gameService, skyrimMaterial
 
     // public
     this.loadEquipment = function(filenames) {
-        let equipment = filenames.map(filename => ({
+        return filenames.map(filename => ({
             filename,
             sets: loadSets(filename),
             items: []
-        }));
-        equipment.forEach(handleUniqueItems);
-        return equipment;
+        })).filter(function(entry) {
+            handleUniqueItems(entry);
+            return entry.sets.length || entry.items.length;
+        });
     };
 });

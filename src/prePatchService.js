@@ -7,7 +7,7 @@ ngapp.service('prePatchService', function() {
     // public
     this.getOverride = function() {
         return service.patchFile ?
-            rec => xelib.GetPreviousOverride(service.patchFile, rec) :
+            rec => xelib.GetPreviousOverride(rec, service.patchFile) :
             rec => xelib.GetWinningOverride(rec);
     };
 

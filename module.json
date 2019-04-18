@@ -7,6 +7,6 @@
   "updated": "0/0/2019",
   "description": "A patcher to apply consistent material keywords to Skyrim armors and weapons.",
   "requires": ["unifiedPatchingFramework", "skyrimKeywordHelpers"],
-  "moduleLoader": "UPF",
+  "moduleLoader": "default",
   "canHotLoad": false
 }

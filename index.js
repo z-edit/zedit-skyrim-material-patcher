@@ -1,4 +1,4 @@
-/* global fh, xelib, logger, registerPatcher, patcherPath, patcherUrl */
+/* global fh, xelib, logger, moduleUrl */
 
 // == begin files ==
 //= require src/prePatchService.js
@@ -7,75 +7,88 @@
 //= require src/settings.js
 // == end files ==
 
-let dummyKeywords;
+let skyrimMaterialPatcher = function(patchFile, helpers, settings) {
+    let {logMessage, cacheRecord} = helpers,
+        dummyKeywords = {};
 
-let injectKeywords = function(patchFile, helpers, settings) {
-    helpers.logMessage('Injecting keywords');
-    let group = xelib.AddElement(patchFile, 'KYWD');
-    Object.keys(settings.materials).forEach(name => {
-        let material = settings.materials[name];
-        helpers.logMessage(`Creating keyword ${material.editorId}`);
-        let rec = xelib.AddElement(group, 'KYWD');
-        helpers.cacheRecord(rec, `SMP_Material${name}`);
-        dummyKeywords[name] = xelib.GetHexFormID(rec, true);
-    });
-};
-
-let addMaterialKeyword = function(patchRec, settings, set, type) {
-    let keywordValue = set.useDummyKeyword ?
-        dummyKeywords[set.material] :
-        settings.materials[set.material][`${type}Keyword`] ||
-        settings.materials[set.material].genericKeyword;
-    if (!keywordValue) return;
-    xelib.AddKeyword(patchRec, keywordValue);
-};
-
-let patchItemSet = function(set, file, helpers, settings) {
-    if (set.material === 'None') return;
-    let patchKeyword = function(item) {
-        let rec = xelib.GetRecord(file, item.fid),
-            patchRec = helpers.copyToPatch(rec);
-        addMaterialKeyword(patchRec, settings, set, item.type);
+    let injectKeywords = function() {
+        logMessage('Injecting keywords');
+        let group = xelib.AddElement(patchFile, 'KYWD');
+        Object.keys(settings.materials).forEach(name => {
+            let editorId = `SMP_Material${name}`;
+            logMessage(`Creating keyword ${editorId}`);
+            let rec = xelib.AddElement(group, 'KYWD');
+            xelib.AddElement(rec, 'EDID');
+            cacheRecord(rec, editorId);
+            dummyKeywords[name] = xelib.GetHexFormID(rec, true);
+        });
     };
 
-    set.weapons.forEach(patchKeyword);
-    set.armors.forEach(patchKeyword);
-};
+    let addMaterialKeyword = function(patchRec, set, type) {
+        let keywordValue = set.useDummyKeyword ?
+            dummyKeywords[set.material] :
+            settings.materials[set.material][`${type}Keyword`] ||
+            settings.materials[set.material].genericKeyword;
+        if (!keywordValue) return;
+        xelib.AddKeyword(patchRec, keywordValue);
+    };
 
-let patchItem = function(item, file, helpers, settings) {
-    if (item.material === 'None') return;
-    let rec = xelib.GetRecord(file, item.fid),
-        patchRec = helpers.copyToPatch(rec);
-    addMaterialKeyword(patchRec, settings, item, item.type);
-};
+    let addPatchRecord = function(file, formId) {
+        let rec = xelib.GetRecord(file, formId);
+        rec = xelib.GetPreviousOverride(rec, patchFile);
+        return helpers.copyToPatch(rec);
+    };
 
-let patchItemKeywords = function(helpers, settings) {
-    settings.equipment.forEach(entry => {
+    let patchItemSet = function(set, file) {
+        if (set.material === 'None') return;
+        let patchKeyword = function(item) {
+            let patchRec = addPatchRecord(file, item.formId);
+            addMaterialKeyword(patchRec, set, item.type);
+        };
+
+        set.weapons.forEach(patchKeyword);
+        set.armors.forEach(patchKeyword);
+    };
+
+    let patchItem = function(item, file) {
+        if (item.material === 'None') return;
+        let patchRec = addPatchRecord(file, item.formId);
+        addMaterialKeyword(patchRec, item, item.type);
+    };
+
+    let materialAssigned = entry => entry.material !== 'None';
+
+    let patchItemKeywords = function(entry) {
         let file = xelib.FileByName(entry.filename),
-            setsToPatch = entry.sets.filter(set => set.material !== 'None'),
-            itemsToPatch = entry.items.filter(item => item.material !== 'None'),
-            numSets = setsToPatch.length;
-        helpers.logMessage(`Patching ${numSets} sets from ${entry.filename}`);
-        setsToPatch.forEach(set => patchItemSet(set, file, helpers, settings));
-        itemsToPatch.forEach(item => patchItem(item, file, helpers, settings));
-    });
-};
+            setsToPatch = entry.sets.filter(materialAssigned),
+            itemsToPatch = entry.items.filter(materialAssigned),
+            numSets = setsToPatch.length,
+            numItems = itemsToPatch.length;
+        logMessage(`Patching ${numSets} sets from ${entry.filename}`);
+        setsToPatch.forEach(set => patchItemSet(set, file));
+        logMessage(`Patching ${numItems} items from ${entry.filename}`);
+        itemsToPatch.forEach(item => patchItem(item, file));
+    };
 
-registerPatcher({
-    info: info,
-    gameModes: [xelib.gmSSE, xelib.gmTES5],
-    settings: {
-        label: 'Skyrim Material Patcher',
-        templateUrl: `${patcherUrl}/partials/settings.html`,
-        controller: settingsController,
-        defaultSettings: {}
-    },
-    execute: (patchFile, helpers, settings) => ({
+    return {
         initialize: function() {
-            dummyKeywords = {};
-            injectKeywords(patchFile, helpers, settings);
-            patchItemKeywords(helpers, settings);
+            injectKeywords();
+            settings.equipment.forEach(patchItemKeywords);
         },
         process: []
-    })
+    }
+};
+
+ngapp.run(function(patcherService) {
+    patcherService.registerPatcher({
+        info: info,
+        gameModes: [xelib.gmSSE, xelib.gmTES5],
+        settings: {
+            label: 'Skyrim Material Patcher',
+            templateUrl: `${moduleUrl}/partials/settings.html`,
+            controller: settingsController,
+            defaultSettings: {}
+        },
+        execute: skyrimMaterialPatcher
+    });
 });
